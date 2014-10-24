@@ -7,3 +7,6 @@
 [submodule "libdonard"]
 	path = libdonard
 	url = https://github.com/sbates130272/libdonard.git
+[submodule "donard_rdma"]
+	path = donard_rdma
+	url = https://github.com/sbates130272/donard_rdma.git

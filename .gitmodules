@@ -10,3 +10,9 @@
 [submodule "donard_rdma"]
 	path = donard_rdma
 	url = https://github.com/sbates130272/donard_rdma.git
+[submodule "mmap_dd"]
+	path = mmap_dd
+	url = https://github.com/sbates130272/mmap_dd.git
+[submodule "mmap_test"]
+	path = mmap_test
+	url = https://github.com/sbates130272/mmap_test.git

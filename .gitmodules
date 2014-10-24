@@ -1,3 +1,9 @@
 [submodule "libargconfig"]
 	path = libargconfig
 	url = https://github.com/sbates130272/libargconfig.git
+[submodule "nvme_donard"]
+	path = nvme_donard
+	url = https://github.com/sbates130272/nvme_donard.git
+[submodule "libdonard"]
+	path = libdonard
+	url = https://github.com/sbates130272/libdonard.git

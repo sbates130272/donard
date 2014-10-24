@@ -16,3 +16,9 @@
 [submodule "mmap_test"]
 	path = mmap_test
 	url = https://github.com/sbates130272/mmap_test.git
+[submodule "nvram_bench"]
+	path = nvram_bench
+	url = https://github.com/sbates130272/nvram_bench.git
+[submodule "donard_tools"]
+	path = donard_tools
+	url = https://github.com/sbates130272/donard_tools.git

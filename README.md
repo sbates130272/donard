@@ -10,9 +10,37 @@ The Donard repo is really just a container for a multiple of smaller
 git repos. See of them in turn for their README and licensing
 information.
 
+## Installation
+
+1. Start from your Linux distro of choice on a bare-metal machine. You
+could try running this inside a VM but since we need to access
+bare-metal I am not sure why you would. We used Debian Wheezy as a
+start point but we have made many mods from there.
+
+2. Install the packages required to install a updated Linux kernel. At
+a minimum you are going to need the following
+packages. kernel-package, libncurses5-dev, fakeroot, bzip2 and bc.
+
+3. Clone the Donard version of the linux kernel from the relevant
+GitHub repo. i.e. git clone https://github.com/sbates130272/linux-donard.git
+
+4. Build and install this version of the linux kernel.
+   cd linux-donard
+   make-kpkg clean
+   fakeroot make-kpkg --initrd --append-to-version=-docker-donard kernel_image kernel_headers
+   cd ..
+   dpkg -i linux-image-3.16.3-docker-donard+_3.16.3-docker-donard+-10.00.Custom_amd64.deb
+   dpkg -i linux-headers-3.16.3-docker-donard+_3.16.3-docker-donard+-10.00.Custom_amd64.deb
+
+5. Now pull the rest of the donard project code:
+   git clone https://github.com/sbates130272/donard.git
+
+6. Install the Nvidia driver. We used the instructions at
+   https://wiki.debian.org/NvidiaGraphicsDrivers.
+
 ## Quick Start
 
-Need to write this.
+Need to write this
 
 ## References
 

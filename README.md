@@ -38,9 +38,25 @@ GitHub repo. i.e. git clone https://github.com/sbates130272/linux-donard.git
 6. Install the Nvidia driver. We used the instructions at
    https://wiki.debian.org/NvidiaGraphicsDrivers.
 
-## Quick Start
+## Quick Start - NVMe<->GPU
 
-Need to write this
+1. cd <root>/nvme_donard
+2. make install (this loads the nvme_donard kernel module and blacklists the defult nvme one).
+3. lsmod | grep nvme should return nvme_donard (and not nvme).
+4. cd <root>/libdonard
+5. ./waf
+6. cd <root>/libdonard/build/speed
+7. dd if=/dev/zero of=/<nvme_drive>/test1.dat bs=1K count=100K (to create a test file, for now keep it at 128MB or less)
+8. ./nvme2gpu_read  -b 128M -D /<nvme_drive>/test1.dat
+9. ./nvme2gpu_read  -b 128M =/<nvme_drive>/test1.dat
+
+
+If all of this runs you should see the –D mode has WAY more page
+faults the without the –D (the non –D is p2p, with –D the transfer
+goes via DRAM). Depending on your system the non –D option may be
+faster too. This is nvme->gpu transfer. There is a similar executable
+in the same fodler to go the other way. You can use likwid-perfctr to
+get better memory and CPU measurements too.
 
 ## References
 

@@ -46,9 +46,9 @@ GitHub repo. i.e. git clone https://github.com/sbates130272/linux-donard.git
 4. cd <root>/libdonard
 5. ./waf
 6. cd <root>/libdonard/build/speed
-7. dd if=/dev/zero of=/<nvme_drive>/test1.dat bs=1K count=100K (to create a test file, for now keep it at 128MB or less)
-8. ./nvme2gpu_read  -b 128M -D /<nvme_drive>/test1.dat
-9. ./nvme2gpu_read  -b 128M =/<nvme_drive>/test1.dat
+7. dd if=/dev/zero of=/\<nvme_drive\>/test1.dat bs=1K count=100K (to create a test file, for now keep it at 128MB or less)
+8. ./nvme2gpu_read  -b 128M -D /\<nvme_drive\>/test1.dat
+9. ./nvme2gpu_read  -b 128M =/\<nvme_drive\>/test1.dat
 
 
 If all of this runs you should see the –D mode has WAY more page
@@ -72,8 +72,8 @@ region really. Anyway here are some steps for the NVDIMM...
 6. ./waf (builds the code, should be no errors).
 7. Since our kernel has the PMEM+DAX patches we can setup the NVDIMM but adding the following line to /etc/modules:
    pmem pmem_start_gb=8 pmem_size_gb=8
-8. The NVDIMM appears as a /dev/pmem<num> and we can mount it using the following in /etc/fstab:
-   /dev/pmem<num>      /mnt/nvdimm     ext4    dax,noatime   0  0
+8. The NVDIMM appears as a /dev/pmem\<num\> and we can mount it using the following in /etc/fstab:
+   /dev/pmem\<num\>      /mnt/nvdimm     ext4    dax,noatime   0  0
 9. You can now run the nvdimm.sh script on the nvdimm. 
 
 

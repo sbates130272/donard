@@ -58,6 +58,25 @@ faster too. This is nvme->gpu transfer. There is a similar executable
 in the same fodler to go the other way. You can use likwid-perfctr to
 get better memory and CPU measurements too.
 
+## Quick Start - NVDIMMs
+
+We have some code in here to test NVDIMMs and the IOMEM exposed in the
+PMC Flashtec NVRAM drive. You can also use it to test any memory
+region really. Anyway here are some steps for the NVDIMM...
+
+1. git clone --recursive https://github.com/sbates130272/donard.git pulls the code.
+2. cd donard/libargconfig
+3. sudo ./waf install
+4. cd ../..
+5. cd donard/nvram_bench
+6. ./waf (builds the code, should be no errors).
+7. Since our kernel has the PMEM+DAX patches we can setup the NVDIMM but adding the following line to /etc/modules:
+   pmem pmem_start_gb=8 pmem_size_gb=8
+8. The NVDIMM appears as a /dev/pmem<num> and we can mount it using the following in /etc/fstab:
+   /dev/pmem<num>      /mnt/nvdimm     ext4    dax,noatime   0  0
+9. You can now run the nvdimm.sh script on the nvdimm. 
+
+
 ## References
 
 A good place to get started is the [Flash Memory

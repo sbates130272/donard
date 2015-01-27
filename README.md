@@ -74,8 +74,67 @@ region really. Anyway here are some steps for the NVDIMM...
    pmem pmem_start_gb=8 pmem_size_gb=8
 8. The NVDIMM appears as a /dev/pmem\<num\> and we can mount it using the following in /etc/fstab:
    /dev/pmem\<num\>      /mnt/nvdimm     ext4    dax,noatime   0  0
-9. You can now run the nvdimm.sh script on the nvdimm. 
+9. You can now run the nvdimm.sh script on the nvdimm.
 
+## Quick Start - RDMA
+
+For these tests you will need two machines (a server and a client) and
+the donard kernel and OFED drivers on both machines. Each machine will
+also need a OFED compliant NIC installed. We've done some testing on
+both the Chelsio T540-CR iWARP card and the Mellanox MT27600 IB card.
+
+### Server
+
+1. git clone --recursive https://github.com/sbates130272/donard.git pulls the code.
+2. cd donard/donard_rdma
+3. ./waf
+4. Run the server (three modes available):
+i. ./build/donard_rdma_server (runs in main memory)
+ii. ./build/donard_rdma_server -g (runs in a bar on GPU)
+iii. ./build/donard_rdma_server -m <file> (runs in a mmap of the
+specified file. If that file is on a NVRAM card it will use that and
+do p2p).
+4. Run the client (see below). When the client runs you should see
+somethng like the following on the server:
+
+Buffer Type: CPU
+Listening on port 11935
+
+Buffer Created: 0x7fa8040a6010 length 1024kB
+Accepting Client Connection: 172.16.0.2
+Testing Send/Recv
+Send Completed Successfully.
+Recv Completed Succesfully.
+Got Seed 220246839, length 32768, use_zeros 0
+Buffer Matches Random Seed.
+Client Disconnected.
+
+
+### Client
+
+1. git clone --recursive https://github.com/sbates130272/donard.git pulls the code.
+2. cd donard/donard_rdma
+3. ./waf
+4. ./build/donard_rdma_client -a <address> -w (note address will be
+system specific and in our case is donard-rdma)
+5. If things work as expected you should get something like:
+
+batesste@cgy1-flash:~/donard/donard_rdma$ donard_rdma_client -a
+donard-rdma
+Seed: 1422379394
+rdma_connect: Connection refused
+batesste@cgy1-flash:~/donard/donard_rdma$ donard_rdma_client -a
+donard-rdma -w
+Seed: 1422379414
+Remote Buffer: 0x7fa8040a6010 : length 1024KiB : bs = 32768B
+Testing Send/Recv
+Recv Completed Succesfully.
+Send Completed Successfully.
+
+Testing Writes
+
+Wrote:        8MiB
+Transfered:   8.42MB in 0.0s   281.21MB/s
 
 ## References
 

@@ -22,3 +22,6 @@
 [submodule "donard_tools"]
 	path = donard_tools
 	url = https://github.com/sbates130272/donard_tools.git
+[submodule "io_peer_mem"]
+	path = io_peer_mem
+	url = https://github.com/sbates130272/io_peer_mem

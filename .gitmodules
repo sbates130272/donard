@@ -25,3 +25,6 @@
 [submodule "io_peer_mem"]
 	path = io_peer_mem
 	url = https://github.com/sbates130272/io_peer_mem
+[submodule "perftest"]
+	path = perftest
+	url = https://github.com/lsgunth/perftest.git

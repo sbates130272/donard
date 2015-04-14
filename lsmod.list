@@ -1,0 +1,130 @@
+# 14th April 2015
+#
+# Output of the command 'sudo lsmod' on the donard server. Of course
+#not all these pacakges are needed to run the donard peer-2-peer code
+# but thislist is provided to aid with server setup.
+Module                  Size  Used by
+io_peer_mem            16384  0
+nvidia_uvm             36864  0
+ip_tables              24576  0
+x_tables               20480  1 ip_tables
+bridge                 73728  0
+stp                    16384  1 bridge
+llc                    16384  2 stp,bridge
+dm_thin_pool           49152  1
+dm_persistent_data     49152  1 dm_thin_pool
+dm_bio_prison          16384  1 dm_thin_pool
+dm_bufio               20480  1 dm_persistent_data
+libcrc32c              16384  1 dm_persistent_data
+binfmt_misc            16384  1
+nfsd                  200704  2
+auth_rpcgss            40960  1 nfsd
+oid_registry           16384  1 auth_rpcgss
+nfs_acl                16384  1 nfsd
+nfs                   151552  0
+lockd                  57344  2 nfs,nfsd
+grace                  16384  2 nfsd,lockd
+fscache                45056  1 nfs
+sunrpc                192512  6 nfs,nfsd,auth_rpcgss,lockd,nfs_acl
+ext2                   61440  1
+nv_peer_mem            16384  0
+ib_ipoib               69632  0
+ib_umad                20480  0
+mlx5_ib                77824  0
+mtramonb               16384  1
+pmem                   16384  1
+rdma_ucm               24576  0
+ib_uverbs              40960  1 rdma_ucm
+rdma_cm                32768  1 rdma_ucm
+ib_cm                  32768  2 rdma_cm,ib_ipoib
+ib_sa                  28672  4 rdma_cm,ib_cm,rdma_ucm,ib_ipoib
+ib_mad                 36864  3 ib_cm,ib_sa,ib_umad
+donard_nv_pinbuf       16384  0
+iw_cxgb4              118784  0
+iw_cm                  28672  2 iw_cxgb4,rdma_cm
+ib_core                69632  13 iw_cxgb4,rdma_cm,ib_cm,ib_sa,iw_cm,nv_peer_mem,mlx5_ib,ib_mad,ib_umad,ib_uverbs,rdma_ucm,io_peer_mem,ib_ipoib
+ib_addr                16384  3 rdma_cm,ib_core,rdma_ucm
+cxgb4                 122880  1 iw_cxgb4
+msr                    16384  0
+loop                   24576  4
+nvidia              10629120  3 nv_peer_mem,donard_nv_pinbuf,nvidia_uvm
+snd_hda_intel          28672  0
+snd_hda_controller     24576  1 snd_hda_intel
+x86_pkg_temp_thermal    16384  0
+snd_hda_codec          90112  2 snd_hda_intel,snd_hda_controller
+coretemp               16384  0
+snd_hwdep              16384  1 snd_hda_codec
+kvm_intel             131072  0
+snd_pcm                73728  3 snd_hda_codec,snd_hda_intel,snd_hda_controller
+snd_timer              24576  1 snd_pcm
+kvm                   339968  1 kvm_intel
+snd                    57344  5 snd_hwdep,snd_timer,snd_pcm,snd_hda_codec,snd_hda_intel
+ghash_clmulni_intel    16384  0
+aesni_intel           167936  0
+aes_x86_64             20480  1 aesni_intel
+soundcore              16384  2 snd,snd_hda_codec
+nvme_donard            45056  2
+drm                   237568  2 nvidia
+psmouse                86016  0
+ablk_helper            16384  1 aesni_intel
+cryptd                 16384  3 ghash_clmulni_intel,aesni_intel,ablk_helper
+lrw                    16384  1 aesni_intel
+ioatdma                40960  0
+pcspkr                 16384  0
+serio_raw              16384  0
+iTCO_wdt               16384  0
+iTCO_vendor_support    16384  1 iTCO_wdt
+sb_edac                24576  0
+gf128mul               16384  1 lrw
+joydev                 20480  0
+evdev                  20480  3
+edac_core              40960  1 sb_edac
+glue_helper            16384  1 aesni_intel
+microcode              32768  0
+i2c_i801               20480  0
+shpchp                 32768  0
+lpc_ich                24576  0
+mfd_core               16384  1 lpc_ich
+ipmi_si                40960  0
+ipmi_msghandler        36864  1 ipmi_si
+acpi_cpufreq           16384  0
+processor              28672  1 acpi_cpufreq
+thermal_sys            28672  2 processor,x86_pkg_temp_thermal
+tpm_tis                20480  0
+wmi                    16384  0
+tpm                    28672  1 tpm_tis
+button                 16384  0
+sr_mod                 24576  0
+cdrom                  28672  1 sr_mod
+ext4                  401408  7
+jbd2                   77824  1 ext4
+mbcache                16384  2 ext2,ext4
+dm_mod                 73728  14 dm_persistent_data,dm_bufio,dm_thin_pool
+ohci_hcd               32768  0
+uhci_hcd               28672  0
+xhci_hcd               94208  0
+sg                     32768  0
+sd_mod                 40960  5
+usb_storage            49152  0
+hid_generic            16384  0
+usbhid                 40960  0
+hid                    94208  2 hid_generic,usbhid
+crc32c_intel           24576  1
+ahci                   32768  1
+igb                   131072  0
+libahci                24576  1 ahci
+isci                   94208  2
+libsas                 61440  1 isci
+ehci_pci               16384  0
+i2c_algo_bit           16384  1 igb
+ehci_hcd               45056  1 ehci_pci
+i2c_core               36864  5 drm,igb,i2c_i801,i2c_algo_bit,nvidia
+libata                147456  3 ahci,libahci,libsas
+dca                    16384  2 igb,ioatdma
+usbcore               147456  7 uhci_hcd,usb_storage,ohci_hcd,ehci_hcd,ehci_pci,usbhid,xhci_hcd
+ptp                    20480  1 igb
+scsi_transport_sas     32768  2 isci,libsas
+usb_common             16384  1 usbcore
+pps_core               16384  1 ptp
+scsi_mod              176128  8 sg,isci,scsi_transport_sas,usb_storage,libata,libsas,sd_mod,sr_mod
+mlx5_core              61440  1 mlx5_ib

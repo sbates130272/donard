@@ -22,7 +22,9 @@ a minimum you are going to need the following
 packages. kernel-package, libncurses5-dev, fakeroot, bzip2 and bc.
 
 3. Clone the Donard version of the linux kernel from the relevant
-GitHub repo. i.e. git clone https://github.com/sbates130272/linux-donard.git
+GitHub repo. i.e. git clone
+https://github.com/sbates130272/linux-donard.git. For a view of how
+this kernel is constructed see linux-donard.pdf.
 
 4. Build and install this version of the linux kernel.
    cd linux-donard

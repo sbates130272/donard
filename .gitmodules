@@ -28,3 +28,6 @@
 [submodule "perftest"]
 	path = perftest
 	url = https://github.com/lsgunth/perftest.git
+[submodule "likwid"]
+	path = likwid
+	url = https://github.com/sbates130272/likwid.git

@@ -23,27 +23,9 @@
 ##
 ########################################################################
 
-  # Notes from Logan
-
-# The command I'm using on the server is:
-#
-#  > likwid-perfctr -g MEM -C S0:0 ib_write_bw -R -s 8388608
-#
-# On the client it's just
-#
-#  > ib_write_bw -s 8388608 -R -n 1024 donard-rdma
-#
-# * Add -mmap <whatever> (w/ sudo) and the memory use goes up a little bit
-# * To do cross-socket tests change -C S0:0 to -C S1:0
-# * Similar results with ib_read_bw instead of ib_write_bw
-# * I think -R is probably optional
-#
-# I've done a few tests and once we are running on the same socket things seem to make a lot more sense.
-
-
   # Parameters for running the performance code
 EXE=ib_write_bw
-ARGS="-D 30 -s 8388608"
+ARGS="-R -D 5 -s 8388608"
 SERVER=donard-rdma
 CLIENT=192.168.5.143
 USER=batesste
@@ -51,6 +33,8 @@ BAR=/sys/bus/pci/devices/0000:00:03.0/0000:03:00.0/resource4
 PERF="likwid-perfctr"
 PARGS="-g MEM -C S0:0"
 LOG="perform.log"
+MEM=mbw
+MARGS="-n 0 -t 0 1024"
 
   # Accept some key parameter changes from the command line.
 while getopts "e:a:s:c:" opt; do
@@ -85,16 +69,26 @@ if [ ! -x ${TMP} ] ; then
     echo "ERROR: Could not find ${PERF} on path. Please fix this and then re-run."
     exit -1
 fi
+TMP=$(which ${MEM})
+if [ ! -x ${TMP} ] ; then
+    echo "ERROR: Could not find ${MEM} on path. Please fix this and then re-run."
+    exit -1
+fi
 
   # Run the performance test on the server and then use ssh to run the
   # command on the client side.
 
 run_test() {
-    ${PERF} ${PARGS} ${EXE} ${ARGS} &
-    ssh ${USER}@${CLIENT} ${EXE} ${ARGS} ${SERVER}
+    taskset -c 1 ${MEM} ${MARGS} &> memory.log &
+    MEM_PID=$!
 
-    ${PERF} ${PARGS} ${EXE} ${ARGS} -mmap=${BAR} &
-    ssh ${USER}@${CLIENT} ${EXE} ${ARGS} ${SERVER}
+    sudo ${PERF} ${PARGS} ${EXE} ${ARGS} -mmap=${BAR} &
+    ssh ${USER}@${CLIENT} ${EXE} ${ARGS} ${SERVER} &> /dev/null
+
+    sudo ${PERF} ${PARGS} ${EXE} ${ARGS} &
+    ssh ${USER}@${CLIENT} ${EXE} ${ARGS} ${SERVER} &> /dev/null
+
+    kill -9 ${MEM_PID}
 }
 
 run_test | tee ${LOG}

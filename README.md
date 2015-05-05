@@ -60,6 +60,12 @@ faster too. This is nvme->gpu transfer. There is a similar executable
 in the same fodler to go the other way. You can use likwid-perfctr to
 get better memory and CPU measurements too.
 
+## Quick Start - perform.sh
+
+A simple bash script resides in the perform folder. When run it checks
+for certain files on the path and then executes a client/server
+perftest test whilst tracking DRAM bandwidth on the server.
+
 ## Quick Start - NVDIMMs
 
 We have some code in here to test NVDIMMs and the IOMEM exposed in the

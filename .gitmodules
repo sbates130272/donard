@@ -31,3 +31,6 @@
 [submodule "likwid"]
 	path = likwid
 	url = https://github.com/sbates130272/likwid.git
+[submodule "mbw"]
+	path = mbw
+	url = https://github.com/sbates130272/mbw.git

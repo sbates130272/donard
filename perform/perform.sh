@@ -43,7 +43,7 @@
 
   # Parameters for running the performance code
 EXE=ib_write_bw
-ARGS="-aR -n 100"
+ARGS="-D 30 -s 8388608"
 SERVER=donard-rdma
 CLIENT=192.168.5.143
 USER=batesste

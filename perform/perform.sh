@@ -23,18 +23,22 @@
 ##
 ########################################################################
 
+
   # Parameters for running the performance code
 EXE=ib_write_bw
 ARGS="-R -D 5 -s 8388608"
 SERVER=donard-rdma
 CLIENT=192.168.5.143
-USER=batesste
 BAR=/sys/bus/pci/devices/0000:00:03.0/0000:03:00.0/resource4
 PERF="likwid-perfctr"
 PARGS="-g MEM -C S0:0"
 LOG="perform.log"
 MEM=mbw
 MARGS="-n 0 -t 0 1024"
+
+  # Pre-authenticate with sudo to prevent the background processes below
+  # from going nuts.
+sudo -v
 
   # Accept some key parameter changes from the command line.
 while getopts "e:a:s:c:" opt; do
@@ -78,17 +82,27 @@ fi
   # Run the performance test on the server and then use ssh to run the
   # command on the client side.
 
+cleanup() {
+    kill ${MEM_PID}
+}
+
 run_test() {
     taskset -c 1 ${MEM} ${MARGS} &> memory.log &
     MEM_PID=$!
+    trap cleanup EXIT
 
-    sudo ${PERF} ${PARGS} ${EXE} ${ARGS} -mmap=${BAR} &
-    ssh ${USER}@${CLIENT} ${EXE} ${ARGS} ${SERVER} &> /dev/null
+    sudo ${PERF} ${PARGS} ${EXE} ${ARGS} --mmap=${BAR} &
+    SERVER_PID=$!
+    sleep 2
+    ssh ${CLIENT} ${EXE} ${ARGS} ${SERVER} &> /dev/null
+    wait $SERVER_PID || exit 1
 
     sudo ${PERF} ${PARGS} ${EXE} ${ARGS} &
-    ssh ${USER}@${CLIENT} ${EXE} ${ARGS} ${SERVER} &> /dev/null
+    SERVER_PID=$!
+    sleep 2
+    ssh ${CLIENT} ${EXE} ${ARGS} ${SERVER} &> /dev/null
+    wait $SERVER_PID || exit 1
 
-    kill -9 ${MEM_PID}
 }
 
 run_test | tee ${LOG}

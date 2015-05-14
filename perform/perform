@@ -8,14 +8,13 @@ import subprocess as sp
 import pty
 import threading
 import re
-import cStringIO
 import traceback
 import signal
 import errno
 import time
 import getpass
 
-from itertools import izip, repeat, chain
+from itertools import repeat, chain
 
 class ProcRunnerException(Exception):
     def __str__(self):
@@ -157,7 +156,7 @@ class MBWRunner(ProcRunner):
 
         tests = [str(t) for t in tests]
         self.args = (["-n", str(loops)] +
-                     list(chain(*izip(repeat('-t'), tests))) +
+                     list(chain(*zip(repeat('-t'), tests))) +
                      [str(array_size_mb)])
 
         self.rates = []

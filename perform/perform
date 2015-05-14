@@ -45,6 +45,9 @@ class ProcRunner(threading.Thread):
         if self.print_output:
             sys.stdout.write(line)
 
+    def finish(self):
+        pass
+
     def run(self):
         try:
             master, slave = pty.openpty()
@@ -71,7 +74,7 @@ class ProcRunner(threading.Thread):
                     traceback.print_exc()
 
         except IOError:
-            pass
+            self.finish()
         except Exception as e:
             self.started.set()
             self.exception = e
@@ -189,22 +192,68 @@ class LikwidMBWRunner(LikwidPerfMixin, MBWRunner):
 class PerfTestOutputMixin(object):
     def __init__(self, mbw=None, *args, **kwargs):
         super(PerfTestOutputMixin, self).__init__(*args, **kwargs)
-        self.bandwidth = None
-        self.volume = None
         self.mbw = mbw
         self.mbw_stats = None
 
+        self.results_line = False
+
+        self.units = {}
+        self.values = {}
+
+    def _process_field(self, f):
+        f = f.strip().strip("# ")
+        if "[" in f:
+            name, unit = f.split("[")
+            unit = unit.strip("[]")
+            self.units[name] = unit
+            return name
+        else:
+            return f.strip()
+
     def process_line(self, line):
         super(PerfTestOutputMixin, self).process_line(line)
-        try:
+
+        if self.results_line:
+            self.results_line = False
             line = [float(x) for x in line.split()]
-            if len(line) == 5:
-                self.bandwidth = line[3] * 1000**2 / 1024**2
-                self.volume = line[0] * line[1] / 1024**3
-                if self.mbw is not None:
-                    self.mbw_stats = self.mbw.stats()
-        except ValueError:
-            pass
+            self.values.update(zip(self.fields, line))
+            if self.mbw is not None:
+                self.mbw_stats = self.mbw.stats()
+        elif line.startswith(" #bytes"):
+            self.fields = [self._process_field(f) for f in  re.split(" {2,}", line)]
+            self.results_line = True
+
+    def finish(self):
+        if self.mbw_stats is None and self.mbw is not None:
+            self.mbw_stats = self.mbw.stats()
+
+        super(PerfTestOutputMixin, self).finish()
+
+    def bandwidth(self):
+        bw = self.values.get("BW average", None)
+        if bw is None: return None
+
+        return bw * 1000**2 / 1024**2
+
+    def volume(self):
+        bytes = self.values.get("bytes", None)
+        its = self.values.get("iterations", None)
+
+        if bytes is None or its is None:
+            return None
+
+        return bytes * its / 1024**3
+
+    def latency(self):
+        avg = self.values.get("t_typical", self.values.get("t_avg", None))
+        if avg is None: return None
+
+        mn = self.values.get("t_min", 0)
+        mx = self.values.get("t_max", 0)
+
+        return {'avg': avg,
+                'min': mn,
+                'max': mx}
 
 class PerfTestServer(PerfTestOutputMixin, ProcRunner):
     def __init__(self, command="ib_write_bw", args=[],
@@ -264,8 +313,9 @@ def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
     with mbw, server, client:
         pass
 
-    return {"rdma_bw": server.bandwidth,
-            "rdma_vol": server.volume,
+    return {"rdma_bw": server.bandwidth(),
+            "rdma_lat": server.latency() or client.latency(),
+            "rdma_vol": server.volume() or client.volume(),
             "mbw_stats": server.mbw_stats,
             "likwid_stats": server.likwid_stats,
             "likwid_units": server.likwid_units}
@@ -273,8 +323,17 @@ def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
 
 def print_results(results, indent=0):
     results["ind"] = " "*indent
-    tmpl = ("{ind}RDMA Bandwidth:           {rdma_bw:>10.0f} MiB/s\n" +
-            "{ind}RDMA Data Volume:         {rdma_vol:>10.1f} GiB\n" +
+    tmpl = ""
+    if results["rdma_bw"]:
+        tmpl += "{ind}RDMA Bandwidth:           {rdma_bw:>10.0f} MiB/s\n"
+    if results["rdma_lat"]:
+        tmpl += "{ind}RDMA Latency:             {rdma_lat[avg]:>10.2f} us"
+        if results["rdma_lat"]["max"]:
+            tmpl += "        (max: {rdma_lat[max]:.2f}, min: {rdma_lat[min]:.2f})\n"
+        else:
+            tmpl += "\n"
+
+    tmpl += ("{ind}RDMA Data Volume:         {rdma_vol:>10.1f} GiB\n" +
             "{ind}MBW Background Bandwidth  {mbw_stats[avg]:>10.0f} MiB/s "
             "    (max: {mbw_stats[max]:.0f}, min: {mbw_stats[min]:.0f})\n" +
             "{ind}MBW Data Volume           {mbw_stats[volume]:>10.1f} GiB\n" +
@@ -357,10 +416,10 @@ if __name__ == "__main__":
 
             print()
             print()
-            print("Perftest with system memory:")
+            print("{} with system memory:".format(options.perftest))
             print_results(mem_res, 2)
 
-            print("Perftest with {}:".format(mmap))
+            print("{} with {}:".format(options.perftest, mmap))
             print_results(mmap_res, 2)
 
     except KeyboardInterrupt:

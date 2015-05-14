@@ -240,11 +240,11 @@ class PerfTestClient(PerfTestOutputMixin, ProcRunner):
         super(PerfTestClient, self).__init__(*pargs, **kwargs)
 
 
-def run_test(client="flash-rdma", duration=5, mmap=None,
+def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
              socket=0, log_file=None, verbose=False,
              perftest="ib_write_bw", **kwargs):
 
-    perftest_args = ["-s", "8388608", "-D", str(duration)]
+    perftest_args = ["-s", str(size), "-D", str(duration)]
     mmap_args = []
 
     if mmap:
@@ -316,6 +316,9 @@ if __name__ == "__main__":
                         "is run locally), default: %(default)s")
     p.add_argument("-D", "--duration", type=int, default=5,
                    help="duration, in seconds to run the perftest for, "
+                        "default: %(default)s")
+    p.add_argument("-s", "--size", type=int, default=8388608,
+                   help="RDMA message size in bytes, "
                         "default: %(default)s")
     p.add_argument("-L", "--log-file", type=argparse.FileType('w'),
                    help="save command output to a log file")

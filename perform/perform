@@ -290,7 +290,7 @@ class PerfTestClient(PerfTestOutputMixin, ProcRunner):
 
 
 def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
-             socket=0, log_file=None, verbose=False,
+             socket=0, log_file=None, client_log_file=None, verbose=False,
              perftest="ib_write_bw", **kwargs):
 
     perftest_args = ["-s", str(size), "-D", str(duration)]
@@ -309,7 +309,8 @@ def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
                                   command=perftest)
 
     client = PerfTestClient(host=client, args=perftest_args,
-                            command=perftest, wait_for=True)
+                            command=perftest, wait_for=True,
+                            log_file=client_log_file)
     with mbw, server, client:
         pass
 
@@ -404,6 +405,16 @@ if __name__ == "__main__":
             sizes = (2**exp for exp in range(1,24))
         else:
             sizes = [opts['size']]
+
+        if opts['log_file']:
+            fname = opts['log_file'].name
+            fname, ext = os.path.splitext(fname)
+            fname = fname + "_client" + ext
+            try:
+                opts['client_log_file'] = open(fname, "w")
+            except IOError as e:
+                print(e)
+                sys.exit(1)
 
         for size in sizes:
 

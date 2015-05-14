@@ -318,7 +318,7 @@ if __name__ == "__main__":
                    help="duration, in seconds to run the perftest for, "
                         "default: %(default)s")
     p.add_argument("-s", "--size", type=int, default=8388608,
-                   help="RDMA message size in bytes, "
+                   help="RDMA message size in bytes (set <2 for all sizes), "
                         "default: %(default)s")
     p.add_argument("-L", "--log-file", type=argparse.FileType('w'),
                    help="save command output to a log file")
@@ -341,18 +341,27 @@ if __name__ == "__main__":
         opts = options.__dict__
         mmap = opts.pop('mmap')
 
-        print("Running system memory test.")
-        mem_res = run_test(**opts)
-        print("Running mmap memory test.")
-        mmap_res = run_test(mmap=mmap, **opts)
+        if opts['size']<2:
+            sizes = (2**exp for exp in range(1,24))
+        else:
+            sizes = [opts['size']]
 
-        print()
-        print()
-        print("Perftest with system memory:")
-        print_results(mem_res, 2)
+        for size in sizes:
 
-        print("Perftest with {}:".format(mmap))
-        print_results(mmap_res, 2)
+            opts['size'] = size
+
+            print("Running system memory test\t(%d B)." % opts['size'])
+            mem_res = run_test(**opts)
+            print("Running mmap memory test\t(%d B)." % opts['size'])
+            mmap_res = run_test(mmap=mmap, **opts)
+
+            print()
+            print()
+            print("Perftest with system memory:")
+            print_results(mem_res, 2)
+
+            print("Perftest with {}:".format(mmap))
+            print_results(mmap_res, 2)
 
     except KeyboardInterrupt:
         print()

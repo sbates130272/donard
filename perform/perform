@@ -444,9 +444,11 @@ if __name__ == "__main__":
 
             opts['size'] = size
 
-            print("Running system memory test\t(%d B)." % opts['size'])
+            print("Running system memory test\t(%s, %d B)." % \
+                      (opts['perftest'], opts['size']))
             mem_res = run_test(**opts)
-            print("Running mmap memory test\t(%d B)." % opts['size'])
+            print("Running mmap memory test\t(%s, %d B)." % \
+                      (opts['perftest'], opts['size']))
             mmap_res = run_test(mmap=mmap, **opts)
 
             print()

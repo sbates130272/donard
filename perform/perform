@@ -152,7 +152,7 @@ class ProcRunner(threading.Thread):
 class LikwidPerfMixin(object):
     likwid_re = re.compile(r"^\|\s+(?P<name>[^\[\|]+)" +
                            r"( \[(?P<units>.*?)\])?\s+" +
-                           r"\|\s+(?P<value>[0-9\.]+)\s+\|")
+                           r"\|\s+(?P<value>[0-9\.e\+]+)\s+\|")
 
     def __init__(self, group="MEM", cpu="S0:0", *args, **kwargs):
         super(LikwidPerfMixin, self).__init__(*args, **kwargs)

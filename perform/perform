@@ -139,8 +139,10 @@ class ProcRunner(threading.Thread):
         try:
             self.start()
         except:
-            self.wait()
-            raise
+            try:
+                self.wait()
+            finally:
+                raise
 
         return self
 

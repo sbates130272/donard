@@ -145,14 +145,15 @@ class ProcRunner(threading.Thread):
             self.finish()
         except Exception as e:
             self.started.set()
-            self.exception = e
+            self.exception = sys.exc_info()
 
 
     def check_started(self):
         self.started.wait(2)
         if self.exception:
             self.join(5)
-            raise self.exception
+            traceback.print_exception(*self.exception)
+            sys.exit(1)
 
     def start(self):
         super(ProcRunner, self).start()

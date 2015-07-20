@@ -157,7 +157,13 @@ class ProcRunner(threading.Thread):
                 killed = True
                 os.killpg(self.p.pid, signal.SIGINT)
 
-            ret = self.p.wait()
+            try:
+                ret = self.p.wait()
+            except KeyboardInterrupt:
+                killed = True
+                os.killpg(self.p.pid, signal.SIGINT)
+                ret = self.p.wait()
+
             os.close(self.slave)
 
         else:
@@ -242,6 +248,7 @@ class MBWRunner(ProcRunner):
 
     def stats(self):
         r = self.rates[1:-1]
+        if not r: return {}
         return {"max": max(r),
                 "min": min(r),
                 "avg": sum(r) / len(r),
@@ -277,10 +284,14 @@ class PerfTestOutputMixin(object):
 
         if self.results_line:
             self.results_line = False
-            line = [float(x) for x in line.split()]
-            self.values.update(zip(self.fields, line))
-            if self.mbw is not None:
-                self.mbw_stats = self.mbw.stats()
+
+            try:
+                line = [float(x) for x in line.split()]
+                self.values.update(zip(self.fields, line))
+                if self.mbw is not None:
+                    self.mbw_stats = self.mbw.stats()
+            except ValueError:
+                pass
         elif line.startswith(" #bytes"):
             self.fields = [self._process_field(f) for f in  re.split(" {2,}", line)]
             self.results_line = True

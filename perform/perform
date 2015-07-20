@@ -476,7 +476,10 @@ class FioClient(FioRunner):
         self.block_size = block_size
         self.size = size
         self.io_depth = io_depth
-        self.verb = command.split(":")[1]
+        if ":" in command:
+            self.verb = command.split(":")[1]
+        else:
+            self.verb = "write"
         self.duration = duration
         self._volume = self._bandwidth = self._latency = None
 

@@ -41,6 +41,42 @@ import getpass
 
 from itertools import repeat, chain
 
+suffix_re = re.compile(r"^([0-9\.]+)([KMGTP]?)", re.IGNORECASE)
+suffix_values = [('' , 1),
+                 ('K', 1 << 10),
+                 ('M', 1 << 20),
+                 ('G', 1 << 30),
+                 ('T', 1 << 40),
+                 ('P', 1 << 50)]
+suffix_dict = dict(suffix_values)
+
+def parse_suffix(value):
+    m = suffix_re.match(value)
+    if not m:
+        raise ValueError("Could not parse: '{}'".format(value))
+
+    value = float(m.group(1))
+    value *= suffix_dict[m.group(2).upper()]
+    return value
+
+class Suffix(object):
+    def __init__(self, value, unit="B"):
+        self.unit = unit
+
+        for s, v in suffix_values[::-1]:
+            if value < v:
+                continue
+            if s:
+                s+= "i"
+
+            self.value = float(value) / v
+            self.suffix = s
+            break
+
+    def __format__(self, format):
+        return ("{:" + format + "} {}{}").format(self.value, self.suffix,
+                                                 self.unit)
+
 class ProcRunnerException(Exception):
     def __str__(self):
         pr, msg = self.args
@@ -259,7 +295,7 @@ class PerfTestOutputMixin(object):
         bw = self.values.get("BW average", None)
         if bw is None: return None
 
-        return bw * 1000**2 / 1024**2
+        return bw * 1000**2
 
     def volume(self):
         bytes = self.values.get("bytes", None)
@@ -268,7 +304,7 @@ class PerfTestOutputMixin(object):
         if bytes is None or its is None:
             return None
 
-        return bytes * its / 1024**3
+        return bytes * its
 
     def latency(self):
         avg = self.values.get("t_typical", self.values.get("t_avg", None))
@@ -351,8 +387,12 @@ def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
 def print_results(results, indent=0):
     results["ind"] = " "*indent
     tmpl = ""
+
+    results["rdma_bw"] = Suffix(results["rdma_bw"], unit="B/s")
+    results["rdma_vol"] = Suffix(results["rdma_vol"], unit="B")
+
     if results["rdma_bw"]:
-        tmpl += "{ind}RDMA Bandwidth:           {rdma_bw:>10.0f} MiB/s\n"
+        tmpl += "{ind}RDMA Bandwidth:           {rdma_bw:>10.2f}\n"
     if results["rdma_lat"]:
         tmpl += "{ind}RDMA Latency:             {rdma_lat[avg]:>10.2f} us"
         if results["rdma_lat"]["max"]:
@@ -360,12 +400,12 @@ def print_results(results, indent=0):
         else:
             tmpl += "\n"
 
-    tmpl += ("{ind}RDMA Data Volume:         {rdma_vol:>10.1f} GiB\n" +
-            "{ind}MBW Background Bandwidth  {mbw_stats[avg]:>10.0f} MiB/s "
-            "    (max: {mbw_stats[max]:.0f}, min: {mbw_stats[min]:.0f})\n" +
-            "{ind}MBW Data Volume           {mbw_stats[volume]:>10.1f} GiB\n" +
-            "{ind}LikWid Memory Data Volume {likwid_stats[Memory data volume]:>10.1f} "
-            "{likwid_units[Memory data volume]}\n")
+    tmpl += ("{ind}RDMA Data Volume:         {rdma_vol:>10.2f}\n" +
+             "{ind}MBW Background Bandwidth  {mbw_stats[avg]:>10.0f} MiB/s "
+             "    (max: {mbw_stats[max]:.0f}, min: {mbw_stats[min]:.0f})\n" +
+             "{ind}MBW Data Volume           {mbw_stats[volume]:>10.1f} GiB\n" +
+             "{ind}LikWid Memory Data Volume {likwid_stats[Memory data volume]:>10.1f} "
+             "{likwid_units[Memory data volume]}\n")
 
     print(tmpl.format(**results))
 
@@ -403,7 +443,7 @@ if __name__ == "__main__":
     p.add_argument("-D", "--duration", type=int, default=5,
                    help="duration, in seconds to run the perftest for, "
                         "default: %(default)s")
-    p.add_argument("-s", "--size", type=int, default=8388608,
+    p.add_argument("-s", "--size", type=parse_suffix, default=8388608,
                    help="RDMA message size in bytes (set <2 for all sizes), "
                         "default: %(default)s")
     p.add_argument("-L", "--log-file", type=argparse.FileType('w'),
@@ -446,11 +486,11 @@ if __name__ == "__main__":
 
             opts['size'] = size
 
-            print("Running system memory test\t(%s, %d B)." % \
-                      (opts['perftest'], opts['size']))
+            print("Running system memory test\t({}, {:.0f})."
+                  .format(opts['perftest'], Suffix(opts['size'])))
             mem_res = run_test(**opts)
-            print("Running mmap memory test\t(%s, %d B)." % \
-                      (opts['perftest'], opts['size']))
+            print("Running mmap memory test\t({}, {:.0f})."
+                  .format(opts['perftest'], Suffix(opts['size'])))
             mmap_res = run_test(mmap=mmap, **opts)
 
             print()

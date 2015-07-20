@@ -335,11 +335,14 @@ class PerfTestOutputMixin(object):
                 'max': mx}
 
 class PerfTestServer(PerfTestOutputMixin, ProcRunner):
-    def __init__(self, command="ib_write_bw", args=[],
-                 *pargs, **kwargs):
-        super(PerfTestServer, self).__init__(*pargs, **kwargs)
+    def __init__(self, command="ib_write_bw", block_size=8388608, duration=5,
+                 mmap=None, *args, **kwargs):
+        super(PerfTestServer, self).__init__(*args, **kwargs)
         self.exe = [command]
-        self.args = ["-R"] + list(args)
+        self.args = ["-R", "-s", str(size), "-D", str(duration)]
+        if mmap:
+            self.args += ["--mmap", mmap]
+
         self.ready = threading.Event()
 
     def process_line(self, line):
@@ -361,33 +364,27 @@ class LikwidPerfTestServer(LikwidPerfMixin, PerfTestServer):
     pass
 
 class PerfTestClient(PerfTestOutputMixin, ProcRunner):
-    def __init__(self, host, command="ib_write_bw", args=[],
-                 *pargs, **kwargs):
-        super(PerfTestClient, self).__init__(*pargs, **kwargs)
+    def __init__(self, host, command="ib_write_bw", block_size=8388608,
+                 duration=5, *args, **kwargs):
+        super(PerfTestClient, self).__init__(*args, **kwargs)
         self.exe = ["ssh", host, command]
-        self.args = ["-R", "${SSH_CLIENT%% *}"] + list(args)
-
+        self.args = ["-R", "${SSH_CLIENT%% *}", "-s", str(size),
+                     "-D", str(duration)]
 
 def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
              socket=0, log_file=None, client_log_file=None, verbose=False,
              perftest="ib_write_bw", **kwargs):
-
-    perftest_args = ["-s", str(size), "-D", str(duration)]
-    mmap_args = []
-
-    if mmap:
-        mmap_args = ["--mmap", mmap]
 
     mbw = LikwidMBWRunner(cpu="S{}:1".format(socket),
                           log_file=log_file)
 
     server = LikwidPerfTestServer(print_output=verbose,
                                   cpu="S{}:0".format(socket), mbw=mbw,
-                                  args=perftest_args+mmap_args,
+                                  block_size=size, duration=duration, mmap=mmap,
                                   log_file=log_file,
                                   command=perftest)
 
-    client = PerfTestClient(host=client, args=perftest_args,
+    client = PerfTestClient(host=client, block_size=size, duration=duration,
                             command=perftest, wait_for=True,
                             log_file=client_log_file)
     with mbw, server, client:

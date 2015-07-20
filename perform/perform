@@ -69,9 +69,13 @@ class Suffix(object):
             if s:
                 s+= "i"
 
+            self.div = v
             self.value = float(value) / v
             self.suffix = s
             break
+        else:
+            self.value = float(value)
+            self.suffix = ""
 
     def __format__(self, format):
         return ("{:" + format + "} {}{}").format(self.value, self.suffix,
@@ -246,8 +250,8 @@ class MBWRunner(ProcRunner):
         m = self.mbw_re.match(line)
         if not m: return
 
-        self.volume += float(m.group("mib"))
-        rate = float(m.group("rate"))
+        self.volume += float(m.group("mib")) * (1 << 20)
+        rate = float(m.group("rate")) * (1 << 20)
         self.rates.append(rate)
 
     def clear(self):
@@ -260,7 +264,7 @@ class MBWRunner(ProcRunner):
                 "min": min(r),
                 "avg": sum(r) / len(r),
                 "count": len(r),
-                "volume": (self.volume * 2)/ 1024} # multiply by 2 for read and write
+                "volume": (self.volume * 2)} # multiply by 2 for read and write
 
 class LikwidMBWRunner(LikwidPerfMixin, MBWRunner):
     pass
@@ -562,9 +566,14 @@ def print_results(results, indent=0):
     tmpl += "{ind}RDMA Data Volume:         {rdma_vol:>10.2f}\n"
 
     if results["mbw_stats"]:
-        tmpl += ("{ind}MBW Background Bandwidth  {mbw_stats[avg]:>10.0f} MiB/s "
-                 "    (max: {mbw_stats[max]:.0f}, min: {mbw_stats[min]:.0f})\n" +
-                 "{ind}MBW Data Volume           {mbw_stats[volume]:>10.1f} GiB\n")
+        results["mbw_stats"]["avg"] = Suffix(results["mbw_stats"]["avg"], "B/s")
+        results["mbw_stats"]["max"] /= results["mbw_stats"]["avg"].div
+        results["mbw_stats"]["min"] /= results["mbw_stats"]["avg"].div
+        results["mbw_stats"]["volume"] = Suffix(results["mbw_stats"]["volume"], "B")
+
+        tmpl += ("{ind}MBW Background Bandwidth  {mbw_stats[avg]:>10.2f} "
+                 "    (max: {mbw_stats[max]:.2f}, min: {mbw_stats[min]:.2f})\n" +
+                 "{ind}MBW Data Volume           {mbw_stats[volume]:>10.1f}\n")
 
     tmpl += ("{ind}LikWid Memory Data Volume {likwid_stats[Memory data volume]:>10.1f} "
              "{likwid_units[Memory data volume]}\n")

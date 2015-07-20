@@ -415,11 +415,14 @@ def print_results(results, indent=0):
         else:
             tmpl += "\n"
 
-    tmpl += ("{ind}RDMA Data Volume:         {rdma_vol:>10.2f}\n" +
-             "{ind}MBW Background Bandwidth  {mbw_stats[avg]:>10.0f} MiB/s "
-             "    (max: {mbw_stats[max]:.0f}, min: {mbw_stats[min]:.0f})\n" +
-             "{ind}MBW Data Volume           {mbw_stats[volume]:>10.1f} GiB\n" +
-             "{ind}LikWid Memory Data Volume {likwid_stats[Memory data volume]:>10.1f} "
+    tmpl += "{ind}RDMA Data Volume:         {rdma_vol:>10.2f}\n"
+
+    if results["mbw_stats"]:
+        tmpl += ("{ind}MBW Background Bandwidth  {mbw_stats[avg]:>10.0f} MiB/s "
+                 "    (max: {mbw_stats[max]:.0f}, min: {mbw_stats[min]:.0f})\n" +
+                 "{ind}MBW Data Volume           {mbw_stats[volume]:>10.1f} GiB\n")
+
+    tmpl += ("{ind}LikWid Memory Data Volume {likwid_stats[Memory data volume]:>10.1f} "
              "{likwid_units[Memory data volume]}\n")
 
     print(tmpl.format(**results))

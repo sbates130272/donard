@@ -372,6 +372,142 @@ class PerfTestClient(PerfTestOutputMixin, ProcRunner):
         self.args = ["-R", "${SSH_CLIENT%% *}", "-s", str(size),
                      "-D", str(duration)]
 
+class FioRunner(ProcRunner):
+    def __init__(self, **kwargs):
+        self.exe = ["fio", "-"]
+        super(FioRunner, self).__init__(**kwargs)
+
+    def setup(self):
+        opts = dict(self.__class__.__dict__)
+        opts.update(self.__dict__)
+
+        job = self.job.format(**opts)
+
+        if self.log_file:
+            print("\n", file=self.log_file)
+            print("-"*40, file=self.log_file)
+            print("Job File", file=self.log_file)
+            print("-"*40, file=self.log_file)
+            for l in job.split():
+                print(l.strip(), file=self.log_file)
+            print("-"*40, file=self.log_file)
+            print("", file=self.log_file)
+
+        self.p.stdin.write(job)
+        self.p.stdin.close()
+
+class FioServer(FioRunner):
+    job = """[rdma-server]
+             rw=read
+             ioengine=rdma
+             port=11692
+             bs={block_size}
+             size={size}
+             iodepth={io_depth}"""
+
+    mbw_stats = {}
+
+    def __init__(self, command=None, block_size=1<<20, size=100<<30,
+                 duration=None, io_depth=1, mbw=None, mmap=None, **kwargs):
+        self.block_size = block_size
+        if self.block_size < 4096: self.block_size = 4096
+        self.size = size
+        self.io_depth = io_depth
+        self.mbw = mbw
+        self.mbw_started = False
+        self.mmap = mmap
+        if self.mmap is not None:
+            self.job += "\nmem=mmap:{mmap}"
+
+        self.ready = threading.Event()
+
+        super(FioServer, self).__init__(**kwargs)
+
+    def process_line(self, line):
+        super(FioServer, self).process_line(line)
+
+        if "waiting for connection" in line:
+            self.ready.set()
+        elif (self.mbw is not None and not self.mbw_started and
+              line.startswith("Jobs")):
+            self.mbw.clear()
+            self.mbw_started = True
+        elif self.mbw_started and line.startswith("rdma-server"):
+            self.mbw_stats = self.mbw.stats()
+            self.mbw_started = False
+
+    def start(self):
+        super(FioServer, self).start()
+        if not self.ready.wait(3):
+            raise ProcRunnerException(self, "Timed out waiting for fio "
+                                      "server to start")
+
+    def bandwidth(self):
+        return None
+
+    def latency(self):
+        return None
+
+    def volume(self):
+        return None
+
+class LikwidFioServer(LikwidPerfMixin, FioServer):
+    pass
+
+
+class FioClient(FioRunner):
+    job = """[rdma-client]
+             rw=write
+             ioengine=rdma
+             runtime={duration}
+             hostname=${{SERVER}}
+             port=11692
+             verb={verb}
+             bs={block_size}
+             size={size}
+             iodepth={io_depth}"""
+
+    def __init__(self, host, command="fio:write", duration=10, block_size=512,
+                 size=100<<30, io_depth=1, **kwargs):
+        self.block_size = block_size
+        self.size = size
+        self.io_depth = io_depth
+        self.verb = command.split(":")[1]
+        self.duration = duration
+        self._volume = self._bandwidth = self._latency = None
+
+        super(FioClient, self).__init__(**kwargs)
+
+        self.args = ["SERVER=${SSH_CLIENT%% *}"] + self.exe
+        self.exe = ["ssh", host]
+
+    lat_re = re.compile(r"^[^:]*: *min= *(?P<min>[0-9.e]+), *"
+                        r"max= *(?P<max>[0-9.e]+), *"
+                        r"avg= *(?P<avg>[0-9.e]+), *"
+                        r"stdev= *(?P<stdev>[0-9.e]+)")
+
+    def process_line(self, line):
+        super(FioClient, self).process_line(line)
+
+        line = line.strip()
+        if line.startswith("write:"):
+            line = line.split()
+            self._volume = parse_suffix(line[1].split("=")[1])
+            self._bandwidth = parse_suffix(line[2].split("=")[1])
+        elif line.startswith("lat"):
+            m = self.lat_re.match(line)
+            if m:
+                self._latency = {k: float(v) for k,v in m.groupdict().items()}
+
+    def bandwidth(self):
+        return self._bandwidth
+
+    def latency(self):
+        return self._latency
+
+    def volume(self):
+        return self._volume
+
 def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
              socket=0, log_file=None, client_log_file=None, verbose=False,
              perftest="ib_write_bw", **kwargs):
@@ -379,19 +515,27 @@ def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
     mbw = LikwidMBWRunner(cpu="S{}:1".format(socket),
                           log_file=log_file)
 
-    server = LikwidPerfTestServer(print_output=verbose,
-                                  cpu="S{}:0".format(socket), mbw=mbw,
-                                  block_size=size, duration=duration, mmap=mmap,
-                                  log_file=log_file,
-                                  command=perftest)
+    Server = LikwidPerfTestServer
+    Client = PerfTestClient
 
-    client = PerfTestClient(host=client, block_size=size, duration=duration,
-                            command=perftest, wait_for=True,
-                            log_file=client_log_file)
+    if perftest.startswith("fio"):
+        Server = LikwidFioServer
+        Client = FioClient
+
+    server = Server(print_output=verbose,
+                    cpu="S{}:0".format(socket), mbw=mbw,
+                    block_size=size, duration=duration, mmap=mmap,
+                    log_file=log_file,
+                    command=perftest)
+
+    client = Client(host=client, block_size=size, duration=duration,
+                    command=perftest, wait_for=True,
+                    log_file=client_log_file)
+
     with mbw, server, client:
         pass
 
-    return {"rdma_bw": server.bandwidth(),
+    return {"rdma_bw": server.bandwidth() or client.bandwidth(),
             "rdma_lat": server.latency() or client.latency(),
             "rdma_vol": server.volume() or client.volume(),
             "mbw_stats": server.mbw_stats,
@@ -486,9 +630,9 @@ if __name__ == "__main__":
         mmap = opts.pop('mmap')
 
         if opts['size']<2:
-            sizes = (2**exp for exp in range(1,24))
+            sizes = (int(2**exp) for exp in range(1,24))
         else:
-            sizes = [opts['size']]
+            sizes = [int(opts['size'])]
 
         if opts['log_file']:
             fname = opts['log_file'].name

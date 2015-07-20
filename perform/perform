@@ -95,6 +95,7 @@ class ProcRunner(threading.Thread):
         self.started = threading.Event()
         self.exception = None
         self.output_lines = []
+        self.args = []
         super(ProcRunner, self).__init__(*args, **kws)
 
     def process_line(self, line):
@@ -104,6 +105,10 @@ class ProcRunner(threading.Thread):
             self.log_file.write(line)
         if self.print_output:
             sys.stdout.write(line)
+            sys.stdout.flush()
+
+    def setup(self):
+        pass
 
     def finish(self):
         pass
@@ -114,6 +119,7 @@ class ProcRunner(threading.Thread):
             self.slave = slave
             try:
                 self.p = sp.Popen(self.exe + self.args,
+                                  stdin=sp.PIPE,
                                   stdout=slave,
                                   stderr=slave,
                                   preexec_fn=os.setsid)
@@ -121,7 +127,9 @@ class ProcRunner(threading.Thread):
                 e.filename = self.exe[0]
                 raise
 
-            mf = os.fdopen(master)
+            mf = os.fdopen(master, "U")
+
+            self.setup()
 
             while True:
                 self.started.set()
@@ -223,15 +231,13 @@ class MBWRunner(ProcRunner):
     def __init__(self, loops=10000, array_size_mb=512, tests=[0],
                  *args, **kws):
 
+        super(MBWRunner, self).__init__(*args, **kws)
         tests = [str(t) for t in tests]
         self.args = (["-n", str(loops)] +
                      list(chain(*zip(repeat('-t'), tests))) +
                      [str(array_size_mb)])
-
         self.rates = []
         self.volume = 0.
-
-        super(MBWRunner, self).__init__(*args, **kws)
 
     def process_line(self, line):
         super(MBWRunner, self).process_line(line)
@@ -331,10 +337,10 @@ class PerfTestOutputMixin(object):
 class PerfTestServer(PerfTestOutputMixin, ProcRunner):
     def __init__(self, command="ib_write_bw", args=[],
                  *pargs, **kwargs):
+        super(PerfTestServer, self).__init__(*pargs, **kwargs)
         self.exe = [command]
         self.args = ["-R"] + list(args)
         self.ready = threading.Event()
-        super(PerfTestServer, self).__init__(*pargs, **kwargs)
 
     def process_line(self, line):
         super(PerfTestServer, self).process_line(line)
@@ -357,9 +363,9 @@ class LikwidPerfTestServer(LikwidPerfMixin, PerfTestServer):
 class PerfTestClient(PerfTestOutputMixin, ProcRunner):
     def __init__(self, host, command="ib_write_bw", args=[],
                  *pargs, **kwargs):
+        super(PerfTestClient, self).__init__(*pargs, **kwargs)
         self.exe = ["ssh", host, command]
         self.args = ["-R", "${SSH_CLIENT%% *}"] + list(args)
-        super(PerfTestClient, self).__init__(*pargs, **kwargs)
 
 
 def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,

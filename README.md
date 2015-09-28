@@ -38,7 +38,92 @@ this kernel is constructed see linux-donard.pdf.
    git clone https://github.com/sbates130272/donard.git
 
 6. Install the Nvidia driver. We used the instructions at
-   https://wiki.debian.org/NvidiaGraphicsDrivers.
+   https://wiki.debian.org/NvidiaGraphicsDrivers. Note that several
+   people have has issues with this step and tieing the Nvidia code
+   into the nvme_donard module. So we outline a more complete
+   procedure in the next section.
+
+## Installation - Nvidia code and nvme_donard (thanks Jack ;-))
+
+1. Build ubuntu 14.04.3 server on the system
+
+2. apt-get install git kernel-package, libncurses5-dev fakerootbzip2 bc
+
+3. git clone https://github.com/sbates130272/linux-donard.git.
+  1. apt-get update followed by apt–get upgrade
+  2. cd to linux-donard directory
+  3. make-kpkg clean
+  4. fakeroot make-kpkg —initrd --append-to-version=-docker-donard
+  kernel_image kernel_headers (Accept defaults from pmem and DAX).
+  5. cd ..
+  6. (As root) dpkg -I *donard*.deb
+  7. Reboot
+  8. uname -r to verify kernel loaded
+
+4. Check soft links
+  1. /lib/modules/3.19.1-docker-donard+/build and
+  /lib/modules/3.19.1-docker-donard+/source should point to
+  /usr/src/linux-headers-3.19.1-docker-donard+
+
+5. Load latest cuda package from nvidia
+
+6. As root
+  1. Copy .deb file from https://developer.nvidia.com/cuda-downloads
+  2. dpkg –I cuda*.deb
+  3. apt-get update
+  4. Apt-get install cuda
+  5. Export PATH and library variables
+  6. Driver will be installed  in /usr/src/nvidia-352-352.39 for cuda
+  7.5
+  7. cd to nvidia src directory
+
+6. As root, not sudo
+  1. kernelver=$(uname –r)
+  2. kernel_source_dir=/lib/modules/$kernelver/build
+  3. make module KERNDIR=/lib/modules/$kernelver \
+     IGNORE_XEN_PRESENCE=1 IGNORE_CC_MISMATCH=1 \
+     SYSSRC=$kernel_source_dir LD=/usr/bin/ld.bfd
+
+7. Verify Module.symvers is built in nvidia src directory
+
+8. Build Donard components
+  1. cd to home
+  2. git clone —recursive https://github.com/sbates130272/donard.git
+  3. cd to donard/nvme_donard directory
+  4. Edit Makefile to point to correct nvidia src directory
+  5. Run make install as root
+  6. lsmod |grep nvme_donard
+
+9. If module not visible then
+  1. modprobe nvme_donard
+
+10. Build and run tests
+  2. May have to make modules followed by make install
+  3. cd donard/libargconfig
+  4. Execute ./waf , may have to ./waf install
+  5. cd to donard/libdonard
+  6. apt-get install libfftw3-dev libmagickwand-dev
+  7. ./waf
+  8. modprobe donard_nv_pinbuf
+  9. mkdir /temp
+  10. mkfs.ext4 /dev/nvme0n1
+  11. mount /dev/nvme0n1 /temp
+  12. dd if=/dev/zero of=/temp/test1.dat bs=1K count=100K
+  13. cd donard/libdonard/build/speed
+  14. ./nvme2gpu_read -b 128M -D /temp/test1.dat
+  15. ./nvme2gpu_read -b 128M  /temp/test1.dat
+
+### Example output
+~/donard/libdonard/build/speed# ./nvme2gpu_read -b 128M /temp/test1.dat
+  Total CPU Time: 0.0s user, 0.9s system
+  Page Faults: 9
+Copied 104.86MB in 348.6 ms   300.78MB/s
+
+~/donard/libdonard/build/speed# ./nvme2gpu_read -b 128M -D /temp/test1.dat
+  Total CPU Time: 0.1s user, 0.9s system
+  Page Faults: 1607
+
+Copied 104.86MB in 80.9  ms     1.30GB/s
 
 ## Quick Start - NVMe<->GPU
 

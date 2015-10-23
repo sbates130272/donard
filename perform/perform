@@ -587,7 +587,7 @@ def print_results(results, indent=0):
 
 def check_mmap_dev(mmap):
     try:
-        with open(mmap, "w"):
+        with open(mmap, "a"):
             pass
     except IOError as e:
         if e.errno != errno.EACCES:
@@ -606,7 +606,7 @@ def check_mmap_dev(mmap):
         sp.check_call(sudo_cmd)
         print()
 
-        with open(mmap, "w"):
+        with open(mmap, "a"):
             pass
 
 if __name__ == "__main__":

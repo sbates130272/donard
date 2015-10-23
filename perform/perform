@@ -168,6 +168,11 @@ class ProcRunner(threading.Thread):
     def wait(self):
         if self.started.wait(2):
             killed = False
+
+            if self.p.poll() is None:
+                #Delay a bit and see if the process finishes on its own
+                time.sleep(0.1)
+
             if self.p.poll() is None and self.kill_me:
                 killed = True
                 os.killpg(self.p.pid, self.kill_sig)

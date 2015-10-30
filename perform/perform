@@ -428,7 +428,7 @@ class FioServer(FioRunner):
         self.mbw_started = False
         self.mmap = mmap
         if self.mmap is not None:
-            self.job += "\nmem=mmap:{mmap}"
+            self.job += "\nmem=mmapshared:{mmap}"
 
         self.ready = threading.Event()
 

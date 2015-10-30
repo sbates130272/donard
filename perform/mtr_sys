@@ -1,0 +1,5 @@
+#!/bin/sh
+
+
+BUS=$(lspci -d 11f8:f117 | head -n 1 | awk '{ print $1 }')
+echo "/sys/bus/pci/devices/0000:${BUS}/resource4_wc"

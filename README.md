@@ -232,10 +232,9 @@ Transfered:   8.42MB in 0.0s   281.21MB/s
 ## References
 
 A good place to get started is the [Flash Memory
-Summit](www.flashmemorysummit.com) 2013
-[paper](http://www.flashmemorysummit.com/cgi-bin/start.cgi/HTMLOS_Pages/Entrance_Proceedings.html)
-that discusses Donard. Another reference is the article on
-[PMC-Sierra's
+Summit](www.flashmemorysummit.com) 2014 paper (which can be found in
+the papers subfolder) that discusses Donard. Another reference is the
+article on [PMC-Sierra's
 blog](http://blog.pmcs.com/project-donard-peer-to-peer-communication-with-nvm-express-devices-part-1/)
 
 ## Licensing

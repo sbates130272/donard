@@ -630,7 +630,6 @@ if __name__ == "__main__":
     p.add_argument("-L", "--log-file", type=argparse.FileType('w'),
                    help="save command output to a log file")
     p.add_argument("--mmap", metavar="DEV",
-                   default="/sys/bus/pci/devices/0000:00:03.0/0000:03:00.0/resource4",
                    help="device to use as an RDMA target, default: %(default)s")
     p.add_argument("-p", "--perftest", default="ib_write_bw",
                    help="which perftest binary to use, default: %(default)s")
@@ -643,10 +642,12 @@ if __name__ == "__main__":
     options = p.parse_args()
 
     try:
-        check_mmap_dev(options.mmap)
 
         opts = options.__dict__
         mmap = opts.pop('mmap')
+
+        if mmap:
+            check_mmap_dev(mmap)
 
         if opts['size']<2:
             sizes = (int(2**exp) for exp in range(1,24))
@@ -670,17 +671,20 @@ if __name__ == "__main__":
             print("Running system memory test\t({}, {:.0f})."
                   .format(opts['perftest'], Suffix(opts['size'])))
             mem_res = run_test(**opts)
-            print("Running mmap memory test\t({}, {:.0f})."
-                  .format(opts['perftest'], Suffix(opts['size'])))
-            mmap_res = run_test(mmap=mmap, **opts)
+
+            if mmap:
+                print("Running mmap memory test\t({}, {:.0f})."
+                      .format(opts['perftest'], Suffix(opts['size'])))
+                mmap_res = run_test(mmap=mmap, **opts)
 
             print()
             print()
             print("{} with system memory:".format(options.perftest))
             print_results(mem_res, 2)
 
-            print("{} with {}:".format(options.perftest, mmap))
-            print_results(mmap_res, 2)
+            if mmap:
+                print("{} with {}:".format(options.perftest, mmap))
+                print_results(mmap_res, 2)
 
     except KeyboardInterrupt:
         print()

@@ -294,6 +294,14 @@ class MBWRunner(ProcRunner):
                 "count": len(r),
                 "volume": (self.volume * 2)} # multiply by 2 for read and write
 
+class CPUPerfRunner(ProcRunner):
+    exe = ["cpuperf.py"]
+
+    def __init__(self, perftest, *args, **kws):
+        super(CPUPerfRunner, self).__init__(*args, **kws)
+        self.args = ["-s", "-C", perftest]
+
+
 class LikwidMBWRunner(LikwidPerfMixin, MBWRunner):
     pass
 
@@ -543,12 +551,25 @@ class FioClient(FioRunner):
     def volume(self):
         return self._volume
 
+class DummyContext(object):
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        pass
+
 def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
              socket=0, log_file=None, client_log_file=None, verbose=False,
-             perftest="ib_write_bw", **kwargs):
+             perftest="ib_write_bw", cpu_perf=None, **kwargs):
 
     mbw = LikwidMBWRunner(cpu="S{}:1".format(socket),
                           log_file=log_file)
+
+    if cpu_perf:
+        cpuperf = CPUPerfRunner(perftest=perftest, log_file=cpu_perf)
+    else:
+        cpuperf = DummyContext()
+
 
     Server = LikwidPerfTestServer
     Client = PerfTestClient
@@ -567,7 +588,7 @@ def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
                     command=perftest, wait_for=True,
                     log_file=client_log_file)
 
-    with mbw, server, client:
+    with cpuperf, mbw, server, client:
         pass
 
     server.time_stats["duration"] = duration
@@ -657,6 +678,9 @@ if __name__ == "__main__":
     p.add_argument("-c", "--client", default="flash-rdma",
                    help="host to run the perftest client on (the server "
                         "is run locally), default: %(default)s")
+    p.add_argument("-C", "--cpu-perf", type=argparse.FileType('w'),
+                   help="run cpu perf in the background and save the log to "
+                   "file specified")
     p.add_argument("-D", "--duration", type=int, default=5,
                    help="duration, in seconds to run the perftest for, "
                         "default: %(default)s")

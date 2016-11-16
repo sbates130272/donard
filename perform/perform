@@ -644,6 +644,11 @@ def print_results(results, indent=0):
 
     tmpl += ("{ind}LikWid Memory Data Volume {likwid_stats[Memory data volume]:>10.1f} "
              "{likwid_units[Memory data volume]}\n")
+    tmpl += ("{ind}Total DDR Write BW        {likwid_stats[Memory Write BW]:>10.1f} "
+             "{likwid_units[Memory Write BW]}\n")
+    tmpl += ("{ind}Total DDR Read BW         {likwid_stats[Memory Read BW]:>10.1f} "
+             "{likwid_units[Memory Read BW]}\n")
+
 
     print(tmpl.format(**results))
 

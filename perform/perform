@@ -709,10 +709,12 @@ if __name__ == "__main__":
                         "default: %(default)s")
     p.add_argument("-v", "--verbose", action="count",
                    help="print command output to stdout")
-    p.add_argument("test_args", nargs=argparse.REMAINDER)
+    p.add_argument("test_args", nargs=argparse.REMAINDER,
+                   help="extra arguments are passed to the pertfest run")
     options = p.parse_args()
 
-    options.test_args.remove("--")
+    if "--" in options.test_args:
+        options.test_args.remove("--")
 
     try:
 

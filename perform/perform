@@ -450,7 +450,7 @@ class FioServer(FioRunner):
 
     mbw_stats = {}
 
-    def __init__(self, command=None, block_size=1<<20, size=100<<30,
+    def __init__(self, command=None, block_size=1<<20, size=100<<40,
                  duration=None, io_depth=1, mbw=None, mmap=None, **kwargs):
         self.block_size = block_size
         if self.block_size < 4096: self.block_size = 4096
@@ -511,7 +511,7 @@ class FioClient(FioRunner):
              iodepth={io_depth}"""
 
     def __init__(self, host, command="fio:write", duration=10, block_size=512,
-                 size=100<<30, io_depth=1, **kwargs):
+                 size=100<<40, io_depth=1, **kwargs):
         self.block_size = block_size
         self.size = size
         self.io_depth = io_depth

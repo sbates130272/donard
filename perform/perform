@@ -377,10 +377,12 @@ class PerfTestOutputMixin(object):
 
 class PerfTestServer(PerfTestOutputMixin, ProcRunner):
     def __init__(self, command="ib_write_bw", block_size=8388608, duration=5,
-                 mmap=None, *args, **kwargs):
+                 mmap=None, test_args=[], *args, **kwargs):
         super(PerfTestServer, self).__init__(*args, **kwargs)
         self.exe = [command]
         self.args = ["-R", "-s", str(size), "-D", str(duration)]
+        self.args += test_args
+
         if mmap:
             self.args += ["--mmap", mmap]
 
@@ -406,15 +408,16 @@ class LikwidPerfTestServer(LikwidPerfMixin, TimeMixin, PerfTestServer):
 
 class PerfTestClient(PerfTestOutputMixin, ProcRunner):
     def __init__(self, host, command="ib_write_bw", block_size=8388608,
-                 duration=5, *args, **kwargs):
+                 duration=5, test_args=[], *args, **kwargs):
         super(PerfTestClient, self).__init__(*args, **kwargs)
         self.exe = ["ssh", host, command]
         self.args = ["-R", "${SSH_CLIENT%% *}", "-s", str(size),
                      "-D", str(duration)]
+        self.args += test_args
 
 class FioRunner(ProcRunner):
-    def __init__(self, **kwargs):
-        self.exe = ["fio", "-"]
+    def __init__(self, test_args=[], **kwargs):
+        self.exe = ["fio", "-"] + test_args
         super(FioRunner, self).__init__(**kwargs)
 
     def setup(self):
@@ -560,7 +563,7 @@ class DummyContext(object):
 
 def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
              socket=0, log_file=None, client_log_file=None, verbose=False,
-             perftest="ib_write_bw", cpu_perf=None, **kwargs):
+             perftest="ib_write_bw", cpu_perf=None, test_args=[], **kwargs):
 
     mbw = LikwidMBWRunner(cpu="S{}:1".format(socket),
                           log_file=log_file)
@@ -582,11 +585,13 @@ def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
                     cpu="S{}:0".format(socket), mbw=mbw,
                     block_size=size, duration=duration, mmap=mmap,
                     log_file=log_file,
-                    command=perftest)
+                    command=perftest,
+                    test_args=test_args)
 
     client = Client(host=client, block_size=size, duration=duration,
                     command=perftest, wait_for=True,
-                    log_file=client_log_file)
+                    log_file=client_log_file,
+                    test_args=test_args)
 
     with cpuperf, mbw, server, client:
         pass
@@ -704,7 +709,10 @@ if __name__ == "__main__":
                         "default: %(default)s")
     p.add_argument("-v", "--verbose", action="count",
                    help="print command output to stdout")
+    p.add_argument("test_args", nargs=argparse.REMAINDER)
     options = p.parse_args()
+
+    options.test_args.remove("--")
 
     try:
 

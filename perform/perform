@@ -433,7 +433,9 @@ class PerfTestClient(PerfTestOutputMixin, TimeProcessLineMixin, ProcRunner):
 
 class FioRunner(ProcRunner):
     def __init__(self, test_args=[], **kwargs):
-        self.exe = ["fio", "-"] + test_args
+        self.exe = ["fio", "-"]
+
+        self.extra_job_lines = "\n".join(test_args)
         super(FioRunner, self).__init__(**kwargs)
 
     def setup(self):
@@ -441,6 +443,7 @@ class FioRunner(ProcRunner):
         opts.update(self.__dict__)
 
         job = self.job.format(**opts)
+        job = job + "\n" + self.extra_job_lines
 
         if self.log_file:
             print("\n", file=self.log_file)
@@ -461,17 +464,15 @@ class FioServer(FioRunner):
              ioengine=rdma
              port=11692
              bs={block_size}
-             size={size}
-             iodepth={io_depth}"""
+             size={size}"""
 
     mbw_stats = {}
 
     def __init__(self, command=None, block_size=1<<20, size=100<<40,
-                 duration=None, io_depth=1, mbw=None, mmap=None, **kwargs):
+                 duration=None,  mbw=None, mmap=None, **kwargs):
         self.block_size = block_size
         if self.block_size < 4096: self.block_size = 4096
         self.size = size
-        self.io_depth = io_depth
         self.mbw = mbw
         self.mbw_started = False
         self.mmap = mmap
@@ -523,14 +524,12 @@ class FioClient(TimeProcessLineMixin, FioRunner):
              port=11692
              verb={verb}
              bs={block_size}
-             size={size}
-             iodepth={io_depth}"""
+             size={size}"""
 
     def __init__(self, host, command="fio:write", duration=10, block_size=512,
-                 size=100<<40, io_depth=1, **kwargs):
+                 size=100<<40, **kwargs):
         self.block_size = block_size
         self.size = size
-        self.io_depth = io_depth
         if ":" in command:
             self.verb = command.split(":")[1]
         else:

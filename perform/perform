@@ -230,16 +230,15 @@ class LikwidPerfMixin(object):
         self.likwid_stats[m.group("name")] = float(m.group("value"))
         self.likwid_units[m.group("name")] = m.group("units")
 
-class TimeMixin(object):
+class TimeProcessLineMixin(object):
     time_re = re.compile(r"^(?P<name>real|user|sys) (?P<value>[0-9\.]+)$")
 
-    def __init__(self, group="MEM", cpu="S0:0", *args, **kwargs):
-        super(TimeMixin, self).__init__(*args, **kwargs)
-        self.exe = ["time", "-p"] + self.exe
+    def __init__(self, *args, **kwargs):
+        super(TimeProcessLineMixin, self).__init__(*args, **kwargs)
         self.time_stats = {}
 
     def process_line(self, line):
-        super(TimeMixin, self).process_line(line)
+        super(TimeProcessLineMixin, self).process_line(line)
 
         m = self.time_re.match(line)
         if not m: return
@@ -251,6 +250,23 @@ class TimeMixin(object):
         if 'user' in self.time_stats and 'sys' in self.time_stats:
             self.time_stats['total'] = (self.time_stats['user'] +
                                         self.time_stats['sys'])
+
+
+    def calculate_results(self, duration=None, *args, **kwargs):
+        if duration is not None:
+            self.time_stats["duration"] = duration
+            self.time_stats["cpu_percent_duration"] = \
+                (100 * self.time_stats["total"] / duration)
+
+        self.time_stats["cpu_percent_total"] = (self.time_stats["total"] /
+                                                self.time_stats["real"]) * 100
+
+
+class TimeMixin(TimeProcessLineMixin):
+    def __init__(self, group="MEM", cpu="S0:0", *args, **kwargs):
+        super(TimeMixin, self).__init__(*args, **kwargs)
+        self.exe = ["time", "-p"] + self.exe
+
 
 class MBWRunner(ProcRunner):
     exe = ["mbw"]
@@ -406,11 +422,11 @@ class PerfTestServer(PerfTestOutputMixin, ProcRunner):
 class LikwidPerfTestServer(LikwidPerfMixin, TimeMixin, PerfTestServer):
     pass
 
-class PerfTestClient(PerfTestOutputMixin, ProcRunner):
+class PerfTestClient(PerfTestOutputMixin, TimeProcessLineMixin, ProcRunner):
     def __init__(self, host, command="ib_write_bw", block_size=8388608,
                  duration=5, test_args=[], *args, **kwargs):
         super(PerfTestClient, self).__init__(*args, **kwargs)
-        self.exe = ["ssh", host, command]
+        self.exe = ["ssh", host, "time", "-p", command]
         self.args = ["-R", "${SSH_CLIENT%% *}", "-s", str(size),
                      "-D", str(duration)]
         self.args += test_args
@@ -498,7 +514,7 @@ class LikwidFioServer(LikwidPerfMixin, TimeMixin, FioServer):
     pass
 
 
-class FioClient(FioRunner):
+class FioClient(TimeProcessLineMixin, FioRunner):
     job = """[rdma-client]
              rw=write
              ioengine=rdma
@@ -524,7 +540,7 @@ class FioClient(FioRunner):
 
         super(FioClient, self).__init__(**kwargs)
 
-        self.args = ["SERVER=${SSH_CLIENT%% *}"] + self.exe
+        self.args = ["SERVER=${SSH_CLIENT%% *}", "time", "-p"] + self.exe
         self.exe = ["ssh", host]
 
     lat_re = re.compile(r"^[^:]*: *min= *(?P<min>[0-9.e]+), *"
@@ -596,12 +612,8 @@ def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
     with cpuperf, mbw, server, client:
         pass
 
-    server.time_stats["duration"] = duration
-    server.time_stats["cpu_percent_duration"] = (100 * server.time_stats["total"]
-                                                 / duration)
-    server.time_stats["cpu_percent_total"] = (server.time_stats["total"] /
-                                              server.time_stats["real"]) * 100
-
+    server.calculate_results(duration=duration)
+    client.calculate_results(duration=duration)
 
     return {"rdma_bw": server.bandwidth() or client.bandwidth(),
             "rdma_lat": server.latency() or client.latency(),
@@ -609,7 +621,8 @@ def run_test(client="flash-rdma", size=8388608, duration=5, mmap=None,
             "mbw_stats": server.mbw_stats,
             "likwid_stats": server.likwid_stats,
             "likwid_units": server.likwid_units,
-            "time_stats": server.time_stats}
+            "server_time": server.time_stats,
+            "client_time": client.time_stats}
 
 
 def print_results(results, indent=0):
@@ -630,12 +643,19 @@ def print_results(results, indent=0):
 
     tmpl += "{ind}RDMA Data Volume:         {rdma_vol:>10.2f}\n"
 
-    if results["time_stats"]:
-        tmpl += "{ind}CPU Time                  {time_stats[total]:>10.2f} s\n"
-        tmpl += "{ind}Duration                  {time_stats[duration]:>10.2f} s"
-        tmpl += "  ({time_stats[cpu_percent_duration]:5.1f}%)\n"
-        tmpl += "{ind}Elapsed Time              {time_stats[real]:>10.2f} s"
-        tmpl += "  ({time_stats[cpu_percent_total]:5.1f}%)\n"
+    if results["server_time"]:
+        tmpl += "{ind}Server CPU Time           {server_time[total]:>10.2f} s\n"
+        tmpl += "{ind}Server Duration           {server_time[duration]:>10.2f} s"
+        tmpl += "  ({server_time[cpu_percent_duration]:5.1f}%)\n"
+        tmpl += "{ind}Server Elapsed Time       {server_time[real]:>10.2f} s"
+        tmpl += "  ({server_time[cpu_percent_total]:5.1f}%)\n"
+
+    if results["client_time"]:
+        tmpl += "{ind}Client CPU Time           {client_time[total]:>10.2f} s\n"
+        tmpl += "{ind}Client Duration           {client_time[duration]:>10.2f} s"
+        tmpl += "  ({client_time[cpu_percent_duration]:5.1f}%)\n"
+        tmpl += "{ind}Client Elapsed Time       {client_time[real]:>10.2f} s"
+        tmpl += "  ({client_time[cpu_percent_total]:5.1f}%)\n"
 
     if results["mbw_stats"]:
         results["mbw_stats"]["avg"] = Suffix(results["mbw_stats"]["avg"], "B/s")
